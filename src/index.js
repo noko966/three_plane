@@ -3,6 +3,9 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import vertex from "./shaders/vertex.glsl";
 import fragment from "./shaders/fragment.glsl";
 import skullModel from "./model/skull.obj";
+import vertexNoised from "./shaders/vertexNoised.glsl";
+import fragmentNoised from "./shaders/fragmentNoised.glsl";
+
 import matcap from "./img/mat.jpg";
 
 
@@ -35,11 +38,9 @@ export default class Sketch{
         );
 
         this.camera.position.set(0, 0, 2);
-        // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.time = 0;
         this.paused = false;
-
-        
 
         this.setupResize();
         this.tabEvents();
@@ -60,25 +61,39 @@ export default class Sketch{
                 this.skullhead = object.children[3];
 
                 this.skull = object;
+
+                this.skull.children.forEach(c => {
+                    c.material = this.material;
+                })
+
+                this.skull.scale.set(0.05,0.05,0.05);
+                this.skull.position.y = -0.5;
+                this.skull.rotation.x = -Math.PI / 2;
+
+                this.scene.add(this.skull);
+
+            },
+        );
+
+        this.loader.load(
+            skullModel,
+            (object) => {
+                this.skullNoised = object;
                 // this.skullJaw.material = this.material;
                 // this.skullTeethUpper.material = this.material;
                 // this.skullTeethLower.material = this.material;
                 // this.skullhead.material = this.material;
 
-                object.children.forEach(c => {
-                    // c.material = new THREE.MeshMatcapMaterial({
-                    //     matcap: new THREE.TextureLoader().load(matcap)
-                    // });
-                    c.material = this.material;
+                this.skullNoised.children.forEach(c => {
+                    c.material = this.materialNoised;
                 })
-                
 
+                this.skullNoised.scale.set(0.048,0.048,0.048);
+                this.skullNoised.position.y = -0.5;
+                this.skullNoised.rotation.x = -Math.PI / 2;
 
-                object.scale.set(0.05,0.05,0.05);
-                object.position.y = -0.5;
-                object.rotation.x = -Math.PI / 2;
+                this.scene.add(this.skullNoised);
 
-                this.scene.add(this.skull);
             },
             // function(xhr){
             //     console.log((xhr.loaded / xhr/total * 100) + '% loaded');
@@ -97,9 +112,12 @@ export default class Sketch{
         document.body.addEventListener('mousemove', (e) => {
             let mx = (e.clientX / window.innerWidth) * 2 - 1;
             let my = -(e.clientY / window.innerHeight) * 2 - 1;
-
-            console.log(my);
             gsap.to(this.skull.rotation, {
+                duration: 1,
+                z: mx,
+                x: my,
+            })
+            gsap.to(this.skullNoised.rotation, {
                 duration: 1,
                 z: mx,
                 x: my,
@@ -116,7 +134,6 @@ export default class Sketch{
             })
         });
         document.body.addEventListener('mouseup', (e) => {
-            let mx = e.clientX / window.innerWidth;
             gsap.to(this.skullJaw.rotation, {
                 duration: 0.5,
                 x: 0
@@ -178,6 +195,18 @@ export default class Sketch{
 
         });
 
+        this.materialNoised = new THREE.ShaderMaterial({
+            side: THREE.DoubleSide,
+            wireframe: false,
+            uniforms: {
+                time: { type: "f", value: 0},
+                resolution: { type: "v4", value: new THREE.Vector4()},
+            },
+            vertexShader: vertexNoised,
+            fragmentShader: fragmentNoised,
+
+        });
+
 
         this.geometry = new THREE.PlaneBufferGeometry(1, 1);
 
@@ -205,7 +234,8 @@ export default class Sketch{
     render(){
         if(this.paused) return;
         this.time += 0.05;
-        this,this.material.uniforms.time.value = this.time;
+        this.material.uniforms.time.value = this.time;
+        this.materialNoised.uniforms.time.value = this.time;
         requestAnimationFrame(this.render.bind(this));
         this.renderer.render(this.scene, this.camera);
     }
