@@ -1,10 +1,12 @@
 import * as THREE from "three";
-
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import vertex from "./shaders/vertex.glsl";
 import fragment from "./shaders/fragment.glsl";
+import skullModel from "./model/skull.obj";
+import matcap from "./img/mat.jpg";
 
 
-// import {TimelineMax} from "gsap";
+import gsap from "gsap";
 let OrbitControls = require("three-orbit-controls")(THREE);
 
 
@@ -33,20 +35,97 @@ export default class Sketch{
         );
 
         this.camera.position.set(0, 0, 2);
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.time = 0;
-
         this.paused = false;
 
-        this.setupResize();
-        // this.tabEvents();
+        
 
+        this.setupResize();
+        this.tabEvents();
         this.addObjects();
         this.resize();
         this.render();
+        
         // this.settings();
 
 
+        this.loader = new OBJLoader();
+        this.loader.load(
+            skullModel,
+            (object) => {
+                this.skullJaw = object.children[0];
+                this.skullTeethUpper = object.children[1];
+                this.skullTeethLower = object.children[2];
+                this.skullhead = object.children[3];
+
+                this.skull = object;
+                // this.skullJaw.material = this.material;
+                // this.skullTeethUpper.material = this.material;
+                // this.skullTeethLower.material = this.material;
+                // this.skullhead.material = this.material;
+
+                object.children.forEach(c => {
+                    // c.material = new THREE.MeshMatcapMaterial({
+                    //     matcap: new THREE.TextureLoader().load(matcap)
+                    // });
+                    c.material = this.material;
+                })
+                
+
+
+                object.scale.set(0.05,0.05,0.05);
+                object.position.y = -0.5;
+                object.rotation.x = -Math.PI / 2;
+
+                this.scene.add(this.skull);
+            },
+            // function(xhr){
+            //     console.log((xhr.loaded / xhr/total * 100) + '% loaded');
+            // },
+            // function(error){
+            //     console.log('error happened obj not loaded ' + error);
+            // }
+        );
+
+        this.mouse();
+
+
+    }
+
+    mouse(){
+        document.body.addEventListener('mousemove', (e) => {
+            let mx = (e.clientX / window.innerWidth) * 2 - 1;
+            let my = -(e.clientY / window.innerHeight) * 2 - 1;
+
+            console.log(my);
+            gsap.to(this.skull.rotation, {
+                duration: 1,
+                z: mx,
+                x: my,
+            })
+        });
+        document.body.addEventListener('mousedown', (e) => {
+            gsap.to(this.skullJaw.rotation, {
+                duration: 0.5,
+                x: Math.PI / 16
+            })
+            gsap.to(this.skullTeethLower.rotation, {
+                duration: 0.5,
+                x: Math.PI / 16
+            })
+        });
+        document.body.addEventListener('mouseup', (e) => {
+            let mx = e.clientX / window.innerWidth;
+            gsap.to(this.skullJaw.rotation, {
+                duration: 0.5,
+                x: 0
+            })
+            gsap.to(this.skullTeethLower.rotation, {
+                duration: 0.5,
+                x: 0
+            })
+        });
     }
 
     // settings(){
@@ -89,6 +168,7 @@ export default class Sketch{
             uniforms: {
                 time: { type: "f", value: 0},
                 resolution: { type: "v4", value: new THREE.Vector4()},
+                matcap: { type: "t", value: new THREE.TextureLoader().load(matcap)},
                 uvRate1: { 
                     value: new THREE.Vector2(1, 1)
                 }
@@ -98,12 +178,11 @@ export default class Sketch{
 
         });
 
-        // this.material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
 
         this.geometry = new THREE.PlaneBufferGeometry(1, 1);
 
         this.plane = new THREE.Mesh(this.geometry, this.material);
-        this.scene.add(this.plane);
+        // this.scene.add(this.plane);
     }
     tabEvents(){
         let t = this;
